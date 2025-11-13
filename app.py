@@ -121,7 +121,7 @@ if page == "Choose Challenge":
                     player["xp"] = player.get("xp", 0) + 10
                     player.setdefault("completed", []).append(challenge["id"])
                     save_progress()
-                    st.experimental_rerun()
+                   st.experimental_rerun()
                 else:
                     st.error("❌ Incorrect. Try again!")
         with col2:
