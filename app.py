@@ -37,6 +37,7 @@ def save_progress():
     except Exception as e:
         st.error(f"Failed to save progress: {e}")
 
+
 def load_progress() -> Optional[dict]:
     """Load player state from disk if available."""
     if os.path.exists(PROGRESS_FILE):
@@ -46,6 +47,7 @@ def load_progress() -> Optional[dict]:
         except Exception:
             return None
     return None
+
 
 def normalize_code(s: str) -> str:
     """
@@ -57,7 +59,7 @@ def normalize_code(s: str) -> str:
     if s is None:
         return ""
     # unify quotes (double -> single)
-    s = s.replace('"', "'")
+    s = s.replace('"', '"')
     # remove comments (simple inline # comments)
     s = re.sub(r"#.*", "", s)
     # remove whitespace
@@ -65,6 +67,7 @@ def normalize_code(s: str) -> str:
     # remove optional trailing semicolons
     s = s.strip().rstrip(";")
     return s
+
 
 def is_correct_submission(submitted: str, expected: str) -> bool:
     """Check if a submitted answer matches the expected one after normalization."""
@@ -121,7 +124,7 @@ if page == "Choose Challenge":
                     player["xp"] = player.get("xp", 0) + 10
                     player.setdefault("completed", []).append(challenge["id"])
                     save_progress()
-                   st.experimental_rerun()
+                    st.experimental_rerun()
                 else:
                     st.error("❌ Incorrect. Try again!")
         with col2:
