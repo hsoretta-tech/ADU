@@ -3,6 +3,9 @@ import json
 import random
 import os
 import re
+import ast
+import io
+import tokenize
 from typing import Optional
 
 st.set_page_config(page_title="Python Challenge Wall", layout="centered")
@@ -49,29 +52,61 @@ def load_progress() -> Optional[dict]:
     return None
 
 
-def normalize_code(s: str) -> str:
-    """
-    Normalize code/text for comparison:
-    - remove all whitespace (spaces, tabs, newlines)
-    - collapse semicolons and optional trailing spaces
-    - normalize quote types
-    """
+# --- Code normalization and submission checking ---
+def _strip_ast_positions(node):
+    """Remove position attributes from AST nodes so dumps are comparable."""
+    for n in ast.walk(node):
+        for attr in ("lineno", "col_offset", "end_lineno", "end_col_offset"):
+            if hasattr(n, attr):
+                try:
+                    setattr(n, attr, None)
+                except Exception:
+                    pass
+
+
+def normalize_code_tokens(s: str) -> str:
+    """Fallback normalization using tokenization; preserves # inside strings."""
     if s is None:
         return ""
-    # unify quotes (double -> single)
-    s = s.replace('"', '"')
-    # remove comments (simple inline # comments)
-    s = re.sub(r"#.*", "", s)
+    # unify quotes: turn double quotes into single for comparison
+    s = s.replace('"', "'")
+    try:
+        out_tokens = []
+        sio = io.StringIO(s)
+        for tok in tokenize.generate_tokens(sio.readline):
+            toknum = tok.type
+            tokval = tok.string
+            if toknum == tokenize.COMMENT:
+                continue
+            out_tokens.append(tokval)
+        s = "".join(out_tokens)
+    except Exception:
+        # fallback to simple regex-based comment removal
+        s = re.sub(r"#.*", "", s)
     # remove whitespace
-    s = re.sub(r"\s+", "", s)
+    s = re.sub(r"\s+'', ''
     # remove optional trailing semicolons
     s = s.strip().rstrip(";")
     return s
 
 
+def normalize_code_ast_or_tokens(s: str) -> str:
+    """Try AST-based canonicalization, fallback to token normalization."""
+    if s is None:
+        return ""
+    try:
+        tree = ast.parse(s)
+        _strip_ast_positions(tree)
+        return ast.dump(tree, include_attributes=False)
+    except Exception:
+        return normalize_code_tokens(s)
+
+
 def is_correct_submission(submitted: str, expected: str) -> bool:
-    """Check if a submitted answer matches the expected one after normalization."""
-    return normalize_code(submitted) == normalize_code(expected)
+    """First attempt AST structural equality, then fall back to token normalization."""
+    sub_norm = normalize_code_ast_or_tokens(submitted)
+    exp_norm = normalize_code_ast_or_tokens(expected)
+    return sub_norm == exp_norm
 
 # --- Initialize session state ---
 if "player" not in st.session_state:
