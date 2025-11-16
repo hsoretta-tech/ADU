@@ -23,9 +23,12 @@ challenges = {
         {"id": 6, "task": "Write a program that counts vowels in a string", "answer": "s=input(); print(sum(1 for c in s if c.lower() in 'aeiou'))"}
     ],
     "Advanced": [
-        {"id": 7, "task": "Create a class Dog with attributes name and age", "answer": "class Dog:\n    def __init__(self, name, age):\n        self.name = name\n        self.age = age"},
-        {"id": 8, "task": "Write a program that fetches data from an API (mocked)", "answer": "import requests; data = requests.get('https://api.example.com').json()"},
-        {"id": 9, "task": "Implement a recursive factorial function", "answer": "def fact(n): return 1 if n<=1 else n*fact(n-1)"}
+        {"id": 7, "task": "Create a class Dog with attributes name and age", 
+         "answer": "class Dog:\n    def __init__(self, name, age):\n        self.name = name\n        self.age = age"},
+        {"id": 8, "task": "Write a program that fetches data from an API (mocked)", 
+         "answer": "import requests; data = requests.get('https://api.example.com').json()"},
+        {"id": 9, "task": "Implement a recursive factorial function", 
+         "answer": "def fact(n): return 1 if n<=1 else n*fact(n-1)"}
     ]
 }
 
@@ -33,7 +36,6 @@ PROGRESS_FILE = "progress.json"
 
 # --- Utilities ---
 def save_progress():
-    """Save current player state to disk (progress.json)."""
     try:
         with open(PROGRESS_FILE, "w", encoding="utf-8") as f:
             json.dump(st.session_state.player, f, ensure_ascii=False, indent=2)
@@ -42,7 +44,6 @@ def save_progress():
 
 
 def load_progress() -> Optional[dict]:
-    """Load player state from disk if available."""
     if os.path.exists(PROGRESS_FILE):
         try:
             with open(PROGRESS_FILE, "r", encoding="utf-8") as f:
@@ -52,9 +53,8 @@ def load_progress() -> Optional[dict]:
     return None
 
 
-# --- Code normalization and submission checking ---
+# --- Code normalization and checking ---
 def _strip_ast_positions(node):
-    """Remove position attributes from AST nodes so dumps are comparable."""
     for n in ast.walk(node):
         for attr in ("lineno", "col_offset", "end_lineno", "end_col_offset"):
             if hasattr(n, attr):
@@ -65,10 +65,8 @@ def _strip_ast_positions(node):
 
 
 def normalize_code_tokens(s: str) -> str:
-    """Fallback normalization using tokenization; preserves # inside strings."""
     if s is None:
         return ""
-    # unify quotes: turn double quotes into single for comparison
     s = s.replace('"', "'")
     try:
         out_tokens = []
@@ -81,17 +79,16 @@ def normalize_code_tokens(s: str) -> str:
             out_tokens.append(tokval)
         s = "".join(out_tokens)
     except Exception:
-        # fallback to simple regex-based comment removal
         s = re.sub(r"#.*", "", s)
-    # remove whitespace
-    s = re.sub(r"\s+'', ''
-    # remove optional trailing semicolons
+
+    # FIXED LINE (your original line was broken)
+    s = re.sub(r"\s+", "", s)
+
     s = s.strip().rstrip(";")
     return s
 
 
 def normalize_code_ast_or_tokens(s: str) -> str:
-    """Try AST-based canonicalization, fallback to token normalization."""
     if s is None:
         return ""
     try:
@@ -103,16 +100,15 @@ def normalize_code_ast_or_tokens(s: str) -> str:
 
 
 def is_correct_submission(submitted: str, expected: str) -> bool:
-    """First attempt AST structural equality, then fall back to token normalization."""
     sub_norm = normalize_code_ast_or_tokens(submitted)
     exp_norm = normalize_code_ast_or_tokens(expected)
     return sub_norm == exp_norm
 
+
 # --- Initialize session state ---
 if "player" not in st.session_state:
-    # default
     st.session_state.player = {"name": "", "xp": 0, "completed": []}
-# load persisted progress if available and session has no name
+
 if not st.session_state.player.get("name"):
     data = load_progress()
     if data and isinstance(data, dict):
@@ -144,38 +140,45 @@ page = st.sidebar.radio("Go to:", ["Choose Challenge", "View Progress", "Reset P
 
 if page == "Choose Challenge":
     level = st.selectbox("Select difficulty level:", ["Easy", "Intermediate", "Advanced"])
-    # choose an available challenge (not completed)
     available = [c for c in challenges[level] if c["id"] not in player["completed"]]
+
     if available:
         challenge = random.choice(available)
         st.markdown(f"### {level} Challenge")
         st.write(challenge["task"])
-        attempt = st.text_area("Enter your Python code here (textual submission):", height=160)
+
+        attempt = st.text_area("Enter your Python code here:", height=160)
+
         col1, col2 = st.columns(2)
         with col1:
             if st.button("Submit"):
                 if is_correct_submission(attempt, challenge["answer"]):
                     st.success("✅ Correct! +10 XP")
-                    player["xp"] = player.get("xp", 0) + 10
-                    player.setdefault("completed", []).append(challenge["id"])
+                    player["xp"] += 10
+                    player["completed"].append(challenge["id"])
                     save_progress()
                     st.experimental_rerun()
                 else:
                     st.error("❌ Incorrect. Try again!")
+
         with col2:
             if st.button("Show Answer"):
-                st.info("Correct answer (for reference):")
+                st.info("Correct answer:")
                 st.code(challenge["answer"])
+
     else:
         st.info(f"All {level} challenges completed!")
 
+
 elif page == "View Progress":
-    st.markdown(f"### Progress for {player.get('name')}")
-    st.write(f"**XP:** {player.get('xp', 0)}")
+    st.markdown(f"### Progress for {player['name']}")
+    st.write(f"**XP:** {player['xp']}")
+
     for level_name in challenges:
         total = len(challenges[level_name])
         done = len([c for c in challenges[level_name] if c["id"] in player.get("completed", [])])
-        fraction = done / total if total > 0 else 0.0
+        fraction = done / total if total else 0
+
         st.write(f"{level_name}: {done}/{total} completed")
         st.progress(fraction)
 
